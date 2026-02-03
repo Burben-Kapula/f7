@@ -177,7 +177,7 @@ function BlogList() {
               <h2>{blog.title}</h2>
               <div className="blog-meta">
                 <span>👤 {blog.author?.name || 'Unknown'}</span>
-                <span>📅 {new Date(blog.createdAt).toLocaleDateString()}</span>
+                <span>📅 {new Date(blog.createdAt).toLocaleDateString('fi-FI')}</span>
               </div>
             </div>
 
