@@ -1,216 +1,235 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux'
+import { useEffect } from 'react'
+import { initializeBlogs, deleteBlog, likeBlog } from '../store/blogSlice'
+import { showNotification } from '../store/notificationSlice'
 
-const API_URL = 'http://localhost:3001/api';
+const Home = () => {
+  const dispatch = useDispatch()
+  
+  // Отримуємо блоги та користувача з Redux
+  const blogs = useSelector(state => state.blogs)
+  const user = useSelector(state => state.user)
 
-function Home() {
-  const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [myBlogs, setMyBlogs] = useState([]);
-  const [topBlog, setTopBlog] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [sortBy, setSortBy] = useState('likes'); // 'likes' або 'comments'
-
-  // Отримуємо користувача з localStorage
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser && storedUser !== 'null') {
+    // Завантажуємо блоги при монтуванні компонента
+    dispatch(initializeBlogs())
+  }, [dispatch])
+
+  // Функція для видалення блога
+  const handleDelete = async (blog) => {
+    if (window.confirm(`Remove blog "${blog.title}" by ${blog.author?.name}?`)) {
       try {
-        setUser(JSON.parse(storedUser));
-      } catch (err) {
-        console.error('Error parsing user:', err);
+        await dispatch(deleteBlog(blog.id))
+        dispatch(showNotification(`Blog "${blog.title}" deleted successfully`, 'success', 5))
+      } catch (error) {
+        const errorMessage = error.response?.data?.error || error.message || 'Failed to delete blog'
+        dispatch(showNotification(errorMessage, 'error', 5))
       }
     }
-  }, []);
+  }
 
-  // Завантажуємо блоги коли є user
-  useEffect(() => {
-    if (user) {
-      fetchBlogs();
-    } else {
-      setLoading(false);
-    }
-  }, [user, sortBy]);
-
-  const fetchBlogs = async () => {
+  // Функція для лайку блога
+  const handleLike = async (blog) => {
     try {
-      setLoading(true);
-      const response = await axios.get(`${API_URL}/blogs`);
-      const allBlogs = response.data;
-
-      // Фільтруємо свої блоги
-      const userBlogs = allBlogs.filter(blog => blog.author?.id === user.id);
-      setMyBlogs(userBlogs);
-
-      // Знаходимо топ блог
-      if (allBlogs.length > 0) {
-        let blogsWithMax = [];
-
-        if (sortBy === 'likes') {
-          const maxLikes = Math.max(...allBlogs.map(b => b.likes.length));
-          blogsWithMax = allBlogs.filter(b => b.likes.length === maxLikes);
-        } else {
-          const maxComments = Math.max(...allBlogs.map(b => b.comments.length));
-          blogsWithMax = allBlogs.filter(b => b.comments.length === maxComments);
-        }
-
-        // Випадковий вибір якщо кілька
-        const randomIndex = Math.floor(Math.random() * blogsWithMax.length);
-        setTopBlog(blogsWithMax[randomIndex]);
-      } else {
-        setTopBlog(null);
-      }
-
-      setError(null);
-    } catch (err) {
-      setError('Failed to load blogs');
-      console.error('Error fetching blogs:', err);
-    } finally {
-      setLoading(false);
+      await dispatch(likeBlog(blog))
+      dispatch(showNotification(`You liked "${blog.title}"`, 'success', 3))
+    } catch (error) {
+      console.error('Failed to like blog:', error)
+      const errorMessage = 
+        error.response?.data?.error ||
+        error.message ||
+        'Network error. Please check your connection.'
+      dispatch(showNotification(errorMessage, 'error', 5))
     }
-  };
+  }
 
-  // Видалити блог
-  const handleDeleteBlog = async (blogId) => {
-    if (!window.confirm('Delete this blog?')) return;
-
-    try {
-      await axios.delete(`${API_URL}/blogs/${blogId}`, {
-        data: { userId: user.id }
-      });
-      
-      // Видаляємо з списку
-      setMyBlogs(myBlogs.filter(blog => blog.id !== blogId));
-      
-      // Оновлюємо топ блог якщо видалили його
-      if (topBlog?.id === blogId) {
-        fetchBlogs();
-      }
-    } catch (err) {
-      console.error('Error deleting blog:', err);
-      alert(err.response?.data?.error || 'Failed to delete blog');
+  // Перевірка власника з debugging
+  const isOwner = (blog) => {
+    if (!user || !blog.author) {
+      console.log('❌ No user or no author:', { user, blogAuthor: blog.author })
+      return false
     }
-  };
-
-  // Якщо не залогінений
-  if (!user) {
-    return (
-      <div className="home-container">
-        <h1>👋 Welcome to Bloglist</h1>
-        <p>Please login to see your profile</p>
-      </div>
-    );
+    
+    const result = blog.author.id === user.id
+    console.log('🔍 Ownership check:', {
+      blogTitle: blog.title,
+      blogAuthorId: blog.author.id,
+      currentUserId: user.id,
+      isOwner: result
+    })
+    return result
   }
 
-  // Завантаження
-  if (loading) {
-    return <div className="loading">Loading...</div>;
-  }
+  // Фільтруємо блоги - показуємо тільки власні
+  const myBlogs = blogs.filter(blog => isOwner(blog))
 
-  // Помилка
-  if (error) {
-    return <div className="error">{error}</div>;
-  }
+  // Debugging після фільтрації
+  console.log('📊 Total blogs:', blogs.length)
+  console.log('📊 My blogs:', myBlogs.length)
+  console.log('👤 Current user:', user)
 
   return (
-    <div className="home-container">
-      <h1>👤 Profile: {user.name}</h1>
-      <p className="user-email">📧 {user.email}</p>
-
-      {/* Фільтр для топ блогу */}
-      <div className="filter-section">
-        <h2>🏆 Top Blog</h2>
-        <div className="filter-buttons">
-          <button
-            className={sortBy === 'likes' ? 'active' : ''}
-            onClick={() => setSortBy('likes')}
-          >
-            👍 By Likes
-          </button>
-          <button
-            className={sortBy === 'comments' ? 'active' : ''}
-            onClick={() => setSortBy('comments')}
-          >
-            💬 By Comments
-          </button>
-        </div>
-      </div>
-
-      {/* Топ блог */}
-      {topBlog ? (
-        <div className="top-blog-card">
-          <div className="top-badge">
-            {sortBy === 'likes' ? '🏆 Most Liked' : '🏆 Most Commented'}
-          </div>
-          <h3>{topBlog.title}</h3>
-          <p className="blog-author">👤 {topBlog.author?.name || 'Unknown'}</p>
-          <p className="blog-content">
-            {topBlog.content.length > 150 
-              ? topBlog.content.substring(0, 150) + '...' 
-              : topBlog.content}
+    <div style={{ 
+      maxWidth: '800px', 
+      margin: '0 auto', 
+      padding: '20px',
+      backgroundColor: '#1a1a1a',
+      minHeight: '100vh'
+    }}>
+      <h1 style={{ color: '#ffffff' }}>My Profile</h1>
+      
+      {user && (
+        <div style={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          padding: '20px',
+          borderRadius: '12px',
+          marginBottom: '30px',
+          boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+        }}>
+          <h2 style={{ color: 'white', margin: '0 0 10px 0' }}>
+            Welcome, {user.name}! 👋
+          </h2>
+          <p style={{ color: 'rgba(255,255,255,0.9)', margin: '5px 0' }}>
+            <strong>Username:</strong> @{user.username}
           </p>
-          <div className="blog-stats">
-            <span>👍 {topBlog.likes.length} likes</span>
-            <span>💬 {topBlog.comments.length} comments</span>
-          </div>
-          <button onClick={() => navigate('/')} className="view-btn-top">
-            📖 View Full Blog
-          </button>
-        </div>
-      ) : (
-        <div className="no-top-blog">
-          <p>No blogs available yet</p>
+          <p style={{ color: 'rgba(255,255,255,0.7)', margin: '5px 0', fontSize: '12px' }}>
+            <strong>User ID:</strong> {user.id}
+          </p>
         </div>
       )}
 
-      {/* Мої блоги */}
-      <div className="my-blogs-section">
-        <h2>📝 My Blogs ({myBlogs.length})</h2>
-        
-        {myBlogs.length === 0 ? (
-          <div className="no-blogs">
-            <p>You haven't created any blogs yet.</p>
-            <button onClick={() => navigate('/createblog')} className="create-btn">
-              ➕ Create Your First Blog
-            </button>
-          </div>
-        ) : (
-          <div className="blogs-grid">
-            {myBlogs.map(blog => (
-              <div key={blog.id} className="blog-card">
-                <h3>{blog.title}</h3>
-                <p className="blog-preview">
-                  {blog.content.length > 100 
-                    ? blog.content.substring(0, 100) + '...' 
-                    : blog.content}
-                </p>
-                <div className="blog-stats">
-                  <span>👍 {blog.likes.length}</span>
-                  <span>💬 {blog.comments.length}</span>
-                </div>
-                <div className="blog-date">
-                  📅 {new Date(blog.createdAt).toLocaleDateString('fi-FI')}
-                </div>
-                <div className="blog-actions">
-                  <button onClick={() => navigate('/')} className="view-btn">
-                    👁️ View
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteBlog(blog.id)} 
-                    className="delete-btn"
-                  >
-                    🗑️ Delete
-                  </button>
-                </div>
+      {/* Debug панель - видали після тестування */}
+      {/* <details style={{
+        backgroundColor: '#2a2a2a',
+        padding: '15px',
+        borderRadius: '8px',
+        marginBottom: '20px',
+        color: '#cccccc'
+      }}>
+        <summary style={{ cursor: 'pointer', color: '#ffffff', fontWeight: 'bold' }}>
+          🔍 Debug Info (click to expand)
+        </summary>
+        <div style={{ marginTop: '10px', fontSize: '14px' }}>
+          <p><strong>Total blogs:</strong> {blogs.length}</p>
+          <p><strong>My blogs:</strong> {myBlogs.length}</p>
+          <p><strong>Current user ID:</strong> {user?.id || 'Not logged in'}</p>
+          <hr style={{ borderColor: '#3a3a3a', margin: '10px 0' }} />
+          <p><strong>All blogs:</strong></p>
+          {blogs.map(blog => (
+            <div key={blog.id} style={{ 
+              padding: '8px', 
+              marginBottom: '8px', 
+              backgroundColor: '#1a1a1a',
+              borderRadius: '4px'
+            }}>
+              <strong>{blog.title}</strong><br/>
+              Author ID: {blog.author?.id || 'No author'}<br/>
+              Is mine: {isOwner(blog) ? '✅ YES' : '❌ NO'}
+            </div>
+          ))}
+        </div>
+      </details> */}
+
+      <h2 style={{ color: '#ffffff' }}>My Blogs ({myBlogs.length})</h2>
+      
+      {myBlogs.length === 0 ? (
+        <div style={{
+          padding: '40px',
+          textAlign: 'center',
+          backgroundColor: '#2a2a2a',
+          borderRadius: '12px',
+          border: '2px solid #3a3a3a'
+        }}>
+          <p style={{ fontSize: '18px', color: '#cccccc' }}>
+            You haven't created any blogs yet. ✍️
+          </p>
+          <p style={{ color: '#999999' }}>Create your first blog to get started!</p>
+        </div>
+      ) : (
+        <div>
+          {myBlogs.map(blog => (
+            <div 
+              key={blog.id} 
+              style={{
+                border: '2px solid #3a3a3a',
+                borderRadius: '12px',
+                padding: '20px',
+                marginBottom: '20px',
+                backgroundColor: '#2a2a2a',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+              }}
+            >
+              <h3 style={{ marginTop: 0, color: '#ffffff', fontSize: '22px' }}>
+                {blog.title}
+              </h3>
+              
+              <p style={{ color: '#aaaaaa', fontSize: '14px', marginBottom: '10px' }}>
+                by <strong style={{ color: '#ffffff' }}>{blog.author?.name || 'Unknown'}</strong>
+              </p>
+              
+              <p style={{ color: '#cccccc', marginBottom: '15px' }}>
+                {blog.content}
+              </p>
+
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                marginTop: '15px',
+                flexWrap: 'wrap'
+              }}>
+                <button
+                  onClick={() => handleLike(blog)}
+                  style={{
+                    padding: '10px 20px',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
+                  }}
+                >
+                  👍 Like ({blog.likes?.length || 0})
+                </button>
+
+                <button
+                  onClick={() => handleDelete(blog)}
+                  style={{
+                    padding: '10px 20px',
+                    background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    boxShadow: '0 2px 8px rgba(245, 87, 108, 0.3)'
+                  }}
+                >
+                  🗑️ Delete
+                </button>
+
+                <span style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#2e7d32',
+                  color: 'white',
+                  fontSize: '12px',
+                  fontStyle: 'italic',
+                  borderRadius: '6px',
+                  fontWeight: '600'
+                }}>
+                  ✨ My Blog
+                </span>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
-  );
+  )
 }
 
-export default Home;
+export default Home

@@ -1,14 +1,38 @@
 import axios from 'axios';
 
-// Базовий URL твого backend'у
-const API_URL = 'http://localhost:3001/api';
+const API_URL = 'http://localhost:3001/api/blogs';
 
-// Функція для створення користувача
-export const createUser = async (userData) => {
-  try {
-    const response = await axios.post(`${API_URL}/persons`, userData);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data?.error || 'Failed to create user';
-  }
+let token = null
+
+const setToken = newToken => {
+  token = `Bearer ${newToken}`
+}
+
+const getAll = async () => {
+  const response = await axios.get(API_URL);
+  return response.data;
 };
+
+const create = async newObject => {
+  const config = {
+    headers: { Authorization: token },
+  }
+
+  const response = await axios.post(API_URL, newObject, config)
+  return response.data
+}
+
+const update = async (id, newObject) => {
+  const response = await axios.put(`${API_URL}/${id}`, newObject)
+  return response.data
+}
+
+const remove = async (id) => {
+  const config = {
+    headers: { Authorization: token },
+  }
+  const response = await axios.delete(`${API_URL}/${id}`, config)
+  return response.data
+}
+
+export default { getAll, create, update, remove, setToken };
