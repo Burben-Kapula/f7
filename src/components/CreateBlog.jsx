@@ -101,7 +101,7 @@ function CreateBlog() {
       const response = await axios.post(`${API_URL}/blogs`, {
         title: formData.title,
         content: formData.content,
-        userId: user.id
+        author: user.id  // Змінено з userId на author
       });
 
       console.log('Blog created:', response.data);

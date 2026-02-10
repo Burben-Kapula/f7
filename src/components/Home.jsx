@@ -45,15 +45,28 @@ const Home = () => {
 
   // Перевірка власника з debugging
   const isOwner = (blog) => {
-    if (!user || !blog.author) {
-      console.log('❌ No user or no author:', { user, blogAuthor: blog.author })
+    if (!user) {
+      console.log('❌ No user:', { user })
       return false
     }
     
-    const result = blog.author.id === user.id
+    // Перевіряємо різні формати author
+    let authorId = null
+    
+    if (typeof blog.author === 'string') {
+      authorId = blog.author  // Якщо author це просто ID
+    } else if (blog.author && blog.author.id) {
+      authorId = blog.author.id  // Якщо author це об'єкт з id
+    } else if (blog.userId) {
+      authorId = blog.userId  // Якщо є userId (fallback)
+    }
+    
+    const result = authorId === user.id
     console.log('🔍 Ownership check:', {
       blogTitle: blog.title,
-      blogAuthorId: blog.author.id,
+      authorId: authorId,
+      blogAuthor: blog.author,
+      userId: blog.userId,
       currentUserId: user.id,
       isOwner: result
     })
@@ -99,7 +112,7 @@ const Home = () => {
       )}
 
       {/* Debug панель - видали після тестування */}
-      {/* <details style={{
+      <details style={{
         backgroundColor: '#2a2a2a',
         padding: '15px',
         borderRadius: '8px',
@@ -123,12 +136,13 @@ const Home = () => {
               borderRadius: '4px'
             }}>
               <strong>{blog.title}</strong><br/>
-              Author ID: {blog.author?.id || 'No author'}<br/>
+              Author: {typeof blog.author === 'string' ? blog.author : (blog.author?.id || 'No author')}<br/>
+              User ID: {blog.userId || 'No userId'}<br/>
               Is mine: {isOwner(blog) ? '✅ YES' : '❌ NO'}
             </div>
           ))}
         </div>
-      </details> */}
+      </details>
 
       <h2 style={{ color: '#ffffff' }}>My Blogs ({myBlogs.length})</h2>
       
