@@ -53,69 +53,71 @@ function App() {
   return (
     <>
       <div>
-        <nav style={{
-          padding: '15px',
-          backgroundColor: '#f5f5f5',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          display: 'flex',
-          gap: '10px',
-          alignItems: 'center',
-          flexWrap: 'wrap'
-        }}>
-          {/* Головна - завжди показується (якщо не на головній) */}
-          {location.pathname !== '/' && (
-            <Link to="/" style={{ textDecoration: 'none' }}>
-              📝 Bloglist
+      <nav style={{
+      padding: '15px',
+      backgroundColor: '#f5f5f5',
+      borderRadius: '8px',
+      marginBottom: '20px',
+      display: 'flex',
+      gap: '10px',
+      alignItems: 'center',
+      flexWrap: 'wrap'
+    }}>
+      {/* Bloglist — ЗАВЖДИ видима, це "логотип"/головна */}
+      <Link to="/" style={{
+        textDecoration: 'none',
+        fontWeight: location.pathname === '/' ? 'bold' : 'normal'
+      }}>
+        📝 Bloglist
+      </Link>
+
+      {/* Якщо НЕ залогінений */}
+      {!user && (
+        <>
+          {location.pathname !== '/login' && (
+            <Link to="/login" style={{ textDecoration: 'none' }}>
+              🔐 Login
             </Link>
           )}
-
-          {/* Якщо НЕ залогінений - показуємо Login і Register */}
-          {!user && (
-            <>
-              {location.pathname !== '/login' && (
-                <Link to="/login" style={{ textDecoration: 'none' }}>
-                  🔐 Login
-                </Link>
-              )}
-              {location.pathname !== '/create' && (
-                <Link to="/create" style={{ textDecoration: 'none' }}>
-                  📋 Register
-                </Link>
-              )}
-            </>
+          {location.pathname !== '/create' && (
+            <Link to="/create" style={{ textDecoration: 'none' }}>
+              📋 Register
+            </Link>
           )}
+        </>
+      )}
 
-          {/* Якщо ЗАЛОГІНЕНИЙ - показуємо всі кнопки */}
-          {user && (
-            <>
-              {location.pathname !== '/createblog' && (
-                <Link to="/createblog" style={{ textDecoration: 'none' }}>
-                  ➕ Create Blog
-                </Link>
-              )}
-              {location.pathname !== '/home' && (
-                <Link to="/home" style={{ textDecoration: 'none' }}>
-                  👤 Profile
-                </Link>
-              )}
-              <button 
-                onClick={handleLogout}
-                style={{
-                  marginLeft: 'auto',
-                  padding: '8px 15px',
-                  backgroundColor: '#ff4444',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                🚪 Logout ({user.name})
-              </button>
-            </>
+      {/* Якщо ЗАЛОГІНЕНИЙ */}
+      {user && (
+        <>
+          {location.pathname !== '/createblog' && (
+            <Link to="/createblog" style={{ textDecoration: 'none' }}>
+              ➕ Create Blog
+            </Link>
           )}
-        </nav>
+          {location.pathname !== '/home' && (
+            <Link to="/home" style={{ textDecoration: 'none' }}>
+              👤 Profile
+            </Link>
+          )}
+          <button
+            onClick={handleLogout}
+            style={{
+              marginLeft: 'auto',
+              padding: '8px 15px',
+              backgroundColor: '#ff4444',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            🚪 Logout ({user.name})
+          </button>
+        </>
+      )}
+    </nav>
+
 
         {/* Компонент для показу повідомлень */}
         <Notifications />

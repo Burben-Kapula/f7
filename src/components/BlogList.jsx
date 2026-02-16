@@ -207,7 +207,7 @@ function BlogList() {
               <span className="comments-count">💬 {blog.comments.length} comments</span>
 
               {/* Кнопка видалення (тільки для автора) */}
-              {user && blog.author?.id === user.id && (
+              {user && (blog.author?.id === user.id || blog.author?._id === user.id) && (
                 <button 
                   onClick={() => handleDeleteBlog(blog.id)}
                   className="delete-blog-btn"
@@ -236,15 +236,16 @@ function BlogList() {
                       </div>
                       <p className="comment-text">{comment.text}</p>
                       
-                      {/* Кнопка видалення коментаря (тільки для автора коментаря) */}
-                      {user && comment.user?._id === user.id && (
-                        <button 
-                          onClick={() => handleDeleteComment(blog.id, comment._id)}
-                          className="delete-comment-btn"
-                        >
-                          🗑️
-                        </button>
-                      )}
+                    {/* Кнопка видалення коментаря (тільки для автора коментаря) */}
+                    {user && (comment.user?._id === user.id || comment.user?.id === user.id) && (
+                      <button 
+                        onClick={() => handleDeleteComment(blog.id, comment._id)}
+                        className="delete-comment-btn"
+                      >
+                        🗑️
+                      </button>
+                    )}
+
                     </div>
                   ))}
                 </div>

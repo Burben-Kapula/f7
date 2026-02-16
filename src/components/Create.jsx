@@ -8,12 +8,13 @@ import userService from '../service/users';
 function Create() {
   // Хук для програмного перенаправлення користувача на іншу сторінку
   const navigate = useNavigate();
-  
+  const [showPassword, setShowPassword] = useState(false);
+
   // Стан для зберігання даних форми (ім'я, username, пароль)
   // Початкові значення - порожні рядки
   const [formData, setFormData] = useState({
     name: '',
-    username: '',
+    email: '',      // ← тепер відповідає бекенду
     password: ''
   });
   
@@ -54,7 +55,7 @@ function Create() {
       console.log('User created:', newUser);
       
       // Очищаємо форму після успішного створення користувача
-      setFormData({ name: '', username: '', password: '' });
+      setFormData({ name: '', email: '', password: '' });
       
       // Показуємо повідомлення користувачу
       alert('User created successfully! Please login.');
@@ -110,27 +111,42 @@ function Create() {
         <div style={{ marginBottom: '15px' }}>
           <input 
             type="text" 
-            placeholder="Enter username" 
-            name="username"  // Ім'я поля змінилось з email на username
-            value={formData.username}
+            placeholder="Enter email" 
+            name="email"  // Ім'я поля змінилось з email на username
+            value={formData.email}
             onChange={handleChange}
             style={{ width: '100%', padding: '8px', fontSize: '16px' }}
+            minLength='8'
             required
           />
         </div>
-
-        {/* Поле для введення пароля */}
-        <div style={{ marginBottom: '15px' }}>
-          <input 
-            type="password"  // Тип password - символи приховані
-            placeholder="Enter password" 
-            name="password" 
+        <div style={{ marginBottom: '15px', position: 'relative' }}>
+          <input
+            type={showPassword ? 'text' : 'password'}
+            placeholder="Enter password"
+            name="password"
             value={formData.password}
             onChange={handleChange}
-            style={{ width: '100%', padding: '8px', fontSize: '16px' }}
-            minLength="3"  // Мінімальна довжина пароля - 3 символи
+            style={{ width: '100%', padding: '8px 70px 8px 8px', fontSize: '16px' }}
+            minLength="8"
             required
           />
+
+          <button
+            type="button"
+            onClick={() => setShowPassword(prev => !prev)}
+            style={{
+              position: 'absolute',
+              right: '5px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              padding: '5px 10px',
+              fontSize: '12px',
+              cursor: 'pointer'
+            }}
+          >
+            {showPassword ? 'Hide' : 'Show'}
+          </button>
         </div>
 
         {/* Умовний рендеринг: показуємо блок помилки тільки якщо error не null */}

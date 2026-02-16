@@ -102,9 +102,7 @@ const Home = () => {
           <h2 style={{ color: 'white', margin: '0 0 10px 0' }}>
             Welcome, {user.name}! 👋
           </h2>
-          <p style={{ color: 'rgba(255,255,255,0.9)', margin: '5px 0' }}>
-            <strong>Username:</strong> @{user.username}
-          </p>
+
           <p style={{ color: 'rgba(255,255,255,0.7)', margin: '5px 0', fontSize: '12px' }}>
             <strong>User ID:</strong> {user.id}
           </p>
@@ -192,22 +190,25 @@ const Home = () => {
                 marginTop: '15px',
                 flexWrap: 'wrap'
               }}>
-                <button
-                  onClick={() => handleLike(blog)}
-                  style={{
-                    padding: '10px 20px',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
-                  }}
-                >
-                  👍 Like ({blog.likes?.length || 0})
-                </button>
+              <button
+                onClick={() => handleLike(blog)}
+                style={{
+                  padding: '5px 12px',
+                  backgroundColor: '#e3f2fd',
+                  border: 'none',
+                  borderRadius: '20px',
+                  fontSize: '14px',
+                  color: '#1976d2',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => e.target.style.backgroundColor = '#bbdefb'}
+                onMouseOut={(e) => e.target.style.backgroundColor = '#e3f2fd'}
+              >
+                👍 {Array.isArray(blog.likes) ? blog.likes.length : blog.likes || 0} likes
+              </button>
+
 
                 <button
                   onClick={() => handleDelete(blog)}
