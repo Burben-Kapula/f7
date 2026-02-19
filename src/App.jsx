@@ -4,18 +4,24 @@ import { useDispatch, useSelector } from 'react-redux'
 import { initializeBlogs } from './store/blogSlice'
 import { setUser, clearUser } from './store/userSlice'
 import blogService from './service/api'
-import './App.css'
+import './components/styles/App.css'
 import Create from './components/Create'
 import CreateBlog from './components/CreateBlog'
 import BlogList from './components/BlogList'
 import Login from './components/Login'
 import Home from './components/Home'
 import Notifications from './components/Notifications'
+import UserView from './components/UsersView'
+import { initializeUsers } from './reducers/usersReducer'
+import BlogView from './components/BlogView'
 
 function App() {
   const location = useLocation()
   const dispatch = useDispatch()
-  
+  useEffect(() => {
+    dispatch(initializeUsers())
+  }, [dispatch])
+
   // Отримуємо користувача з Redux store замість локального стану
   const user = useSelector(state => state.user)
 
@@ -100,6 +106,12 @@ function App() {
               👤 Profile
             </Link>
           )}
+          {location.pathname !== '/users' && (
+            <Link to="/users" style={{ textDecoration: 'none' }}>
+              👤 Users
+            </Link>
+          )}
+          
           <button
             onClick={handleLogout}
             style={{
@@ -124,10 +136,12 @@ function App() {
 
         <Routes>
           <Route path="/" element={<BlogList />} />
+          <Route path="/blogs/:id" element={<BlogView />} />
           <Route path="/create" element={<Create />} />
           <Route path="/login" element={<Login />} />
           <Route path="/createblog" element={<CreateBlog />} />
           <Route path="/home" element={<Home />} />
+          <Route path='/users' element={<UserView/>}/>
           <Route path="*" element={<h1>404 Not Found</h1>} />
         </Routes>
       </div>

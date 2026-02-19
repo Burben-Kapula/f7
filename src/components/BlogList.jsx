@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Link } from 'react-router-dom'
 
 const API_URL = 'http://localhost:3001/api';
 
@@ -163,119 +164,30 @@ function BlogList() {
     return <div className="error">{error}</div>;
   }
 
-  return (
+ return (
     <div className="blog-list">
-      <h1>📝 All Blogs</h1>
-      
-      {blogs.length === 0 ? (
-        <p className="no-blogs">No blogs yet. Be the first to create one!</p>
-      ) : (
-        blogs.map(blog => (
-          <div key={blog.id} className="blog-card">
-            {/* Header блогу */}
-            <div className="blog-header">
-              <h2>{blog.title}</h2>
-              <div className="blog-meta">
-                <span>👤 {blog.author?.name || 'Unknown'}</span>
-                <span>📅 {new Date(blog.createdAt).toLocaleDateString('fi-FI')}</span>
-              </div>
-            </div>
-
-            {/* Контент блогу */}
-            <div className="blog-content">
-              <p>{blog.content}</p>
-            </div>
-
-            {/* Лайки і дізлайки */}
-            <div className="blog-actions">
-              <button 
-                onClick={() => handleLike(blog.id)}
-                className={`like-btn ${hasUserLiked(blog) ? 'active' : ''}`}
-                disabled={!user}
-              >
-                👍 {blog.likes.length}
-              </button>
-              
-              <button 
-                onClick={() => handleDislike(blog.id)}
-                className={`dislike-btn ${hasUserDisliked(blog) ? 'active' : ''}`}
-                disabled={!user}
-              >
-                👎 {blog.dislikes.length}
-              </button>
-
-              <span className="comments-count">💬 {blog.comments.length} comments</span>
-
-              {/* Кнопка видалення (тільки для автора) */}
-              {user && (blog.author?.id === user.id || blog.author?._id === user.id) && (
-                <button 
-                  onClick={() => handleDeleteBlog(blog.id)}
-                  className="delete-blog-btn"
-                >
-                  🗑️ Delete
-                </button>
-              )}
-            </div>
-
-            {/* Секція коментарів */}
-            <div className="comments-section">
-              <h3>Comments:</h3>
-              
-              {/* Список коментарів */}
-              {blog.comments.length === 0 ? (
-                <p className="no-comments">No comments yet. Be the first!</p>
-              ) : (
-                <div className="comments-list">
-                  {blog.comments.map(comment => (
-                    <div key={comment._id} className="comment">
-                      <div className="comment-header">
-                        <strong>{comment.user?.name || 'Unknown'}</strong>
-                        <span className="comment-date">
-                          {new Date(comment.createdAt).toLocaleString()}
-                        </span>
-                      </div>
-                      <p className="comment-text">{comment.text}</p>
-                      
-                    {/* Кнопка видалення коментаря (тільки для автора коментаря) */}
-                    {user && (comment.user?._id === user.id || comment.user?.id === user.id) && (
-                      <button 
-                        onClick={() => handleDeleteComment(blog.id, comment._id)}
-                        className="delete-comment-btn"
-                      >
-                        🗑️
-                      </button>
-                    )}
-
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Форма додавання коментаря */}
-              {user ? (
-                <div className="add-comment">
-                  <input
-                    type="text"
-                    placeholder="Write a comment..."
-                    value={commentInputs[blog.id] || ''}
-                    onChange={(e) => handleCommentInputChange(blog.id, e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        handleAddComment(blog.id);
-                      }
-                    }}
-                  />
-                  <button onClick={() => handleAddComment(blog.id)}>
-                    💬 Add Comment
-                  </button>
-                </div>
-              ) : (
-                <p className="login-prompt">Login to comment</p>
-              )}
+      {blogs.map(blog => (
+        <div key={blog.id} className="blog-card">
+          {/* Коротка інформація */}
+          <div className="blog-header">
+            <h2>{blog.title}</h2>
+            <div className="blog-meta">
+              <span>👤 {blog.author?.name || blog.author || 'Unknown'}</span>
+              <span>👍 {blog.likes.length}</span>
+              <span>💬 {blog.comments.length}</span>
             </div>
           </div>
-        ))
-      )}
+
+          {/* Кнопка "показати повністю" */}
+          <div className="blog-actions">
+            <Link to={`/blogs/${blog.id}`}>
+              <button className="view-blog-btn">
+                🔍 View full blog
+              </button>
+            </Link>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

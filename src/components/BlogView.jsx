@@ -1,37 +1,72 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useDispatch, useSelector } from 'react-redux'
-import { likeBlog, deleteBlog } from '../store/blogSlice'
-import { showNotification } from '../store/notificationSlice'
-import blogService from '../service/api'
+import { useSelector } from 'react-redux'
+import axios from 'axios'
+
+const API_URL = 'http://localhost:3001/api'
 
 const BlogView = () => {
-  const [comments, setComments] = useState([])
-  const [newComment, setNewComment] = useState('')
-  const id = useParams().id
+  const { id } = useParams()
   const navigate = useNavigate()
-  const dispatch = useDispatch()
-  
-  const blog = useSelector(state => 
+
+  // беремо блог із Redux
+  const blogFromStore = useSelector(state =>
     state.blogs.find(b => b.id === id)
   )
-  const user = useSelector(state => state.user)
 
+  // локальний стейт для блогу (щоб оновлювати після лайків/коментів)
+  const [blog, setBlog] = useState(blogFromStore || null)
+  const [user, setUser] = useState(null)
+  const [commentInput, setCommentInput] = useState('')
+  const [loading, setLoading] = useState(!blogFromStore)
+  const [error, setError] = useState(null)
+
+  // дістаємо користувача з localStorage (як у BlogList)
   useEffect(() => {
-    if (blog) {
-      blogService.getComments(blog.id).then(comments => {
-        setComments(comments)
-      }).catch(error => {
-        console.error('Failed to fetch comments:', error)
-      })
+    const storedUser = localStorage.getItem('user')
+    if (storedUser && storedUser !== 'null') {
+      try {
+        setUser(JSON.parse(storedUser))
+      } catch (err) {
+        console.error('Error parsing user:', err)
+      }
     }
-  }, [blog])
+  }, [])
+
+  // якщо блогу нема в Redux (після refresh), підтягуємо його з бекенда
+  useEffect(() => {
+    const fetchBlog = async () => {
+      try {
+        setLoading(true)
+        const response = await axios.get(`${API_URL}/blogs/${id}`)
+        setBlog(response.data)
+        setError(null)
+      } catch (err) {
+        console.error('Error fetching blog:', err)
+        setError('Failed to load blog')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (!blogFromStore) {
+      fetchBlog()
+    }
+  }, [id, blogFromStore])
+
+  if (loading) {
+    return <div className="loading">Loading blog...</div>
+  }
+
+  if (error) {
+    return <div className="error">{error}</div>
+  }
 
   if (!blog) {
     return (
-      <div style={{ 
-        maxWidth: '800px', 
-        margin: '50px auto', 
+      <div style={{
+        maxWidth: '800px',
+        margin: '50px auto',
         textAlign: 'center',
         padding: '20px'
       }}>
@@ -43,251 +78,193 @@ const BlogView = () => {
     )
   }
 
-  const handleLike = () => {
-    dispatch(likeBlog(blog))
-    dispatch(showNotification(`You liked '${blog.title}'`, 'success', 5))
-  }
+  // перевірка лайків/дизлайків (та сама, що в BlogList)
+  const hasUserLiked = () =>
+    user && blog.likes.includes(user.id)
 
-  const handleDelete = async () => {
-    if (window.confirm(`Remove blog ${blog.title} by ${blog.author}?`)) {
-      try {
-        await dispatch(deleteBlog(blog.id))
-        dispatch(showNotification(`Blog '${blog.title}' removed`, 'success', 5))
-        navigate('/')
-      } catch (err) {
-        console.error('Failed to add comment:', err)
-        dispatch(showNotification('Failed to add comment', 'error', 5))
-        }
+  const hasUserDisliked = () =>
+    user && blog.dislikes.includes(user.id)
 
-    }
-  }
-
-  const handleAddComment = async (event) => {
-    event.preventDefault()
-    if (!newComment.trim()) {
-      dispatch(showNotification('Comment cannot be empty', 'error', 5))
+  // Лайк
+  const handleLike = async () => {
+    if (!user) {
+      alert('Please login to like posts')
       return
     }
 
     try {
-      const returnedComment = await blogService.addComment(blog.id, newComment)
-      setComments(comments.concat(returnedComment))
-      setNewComment('')
-      dispatch(showNotification('Comment added', 'success', 5))
+      const response = await axios.put(`${API_URL}/blogs/${blog.id}/like`, {
+        userId: user.id,
+      })
+      setBlog(response.data)
     } catch (err) {
-    console.error('Failed to add comment:', err)
-    dispatch(showNotification('Failed to add comment', 'error', 5))
+      console.error('Error liking blog:', err)
+      alert('Failed to like post')
     }
-
   }
 
-  const canDelete = user && blog.user && user.username === blog.user.username
+  // Дізлайк
+  const handleDislike = async () => {
+    if (!user) {
+      alert('Please login to dislike posts')
+      return
+    }
+
+    try {
+      const response = await axios.put(`${API_URL}/blogs/${blog.id}/dislike`, {
+        userId: user.id,
+      })
+      setBlog(response.data)
+    } catch (err) {
+      console.error('Error disliking blog:', err)
+      alert('Failed to dislike post')
+    }
+  }
+
+  // Додати коментар
+  const handleAddComment = async (e) => {
+    e.preventDefault()
+    if (!user) {
+      alert('Please login to comment')
+      return
+    }
+
+    if (!commentInput.trim()) {
+      alert('Comment cannot be empty')
+      return
+    }
+
+    try {
+      const response = await axios.post(`${API_URL}/blogs/${blog.id}/comments`, {
+        userId: user.id,
+        text: commentInput.trim(),
+      })
+      setBlog(response.data) // бекенд повертає оновлений блог з comments
+      setCommentInput('')
+    } catch (err) {
+      console.error('Error adding comment:', err)
+      alert('Failed to add comment')
+    }
+  }
+
+  // Видалити коментар
+  const handleDeleteComment = async (commentId) => {
+    if (!user) return
+    if (!window.confirm('Delete this comment?')) return
+
+    try {
+      const response = await axios.delete(
+        `${API_URL}/blogs/${blog.id}/comments/${commentId}`,
+        { data: { userId: user.id } }
+      )
+      setBlog(response.data)
+    } catch (err) {
+      console.error('Error deleting comment:', err)
+      alert(err.response?.data?.error || 'Failed to delete comment')
+    }
+  }
+
+  // Видалити блог
+  const handleDeleteBlog = async () => {
+    if (!user) return
+    if (!window.confirm(`Delete blog "${blog.title}"?`)) return
+
+    try {
+      await axios.delete(`${API_URL}/blogs/${blog.id}`, {
+        data: { userId: user.id },
+      })
+      navigate('/') // назад до списку
+    } catch (err) {
+      console.error('Error deleting blog:', err)
+      alert(err.response?.data?.error || 'Failed to delete blog')
+    }
+  }
+
+  const canDelete =
+    user &&
+    (blog.author?.id === user.id || blog.author?._id === user.id)
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-      {/* Header */}
-      <div style={{
-        backgroundColor: '#2196F3',
-        color: 'white',
-        padding: '30px',
-        borderRadius: '12px 12px 0 0',
-        marginBottom: '0'
-      }}>
-        <h1 style={{ margin: '0 0 10px 0', fontSize: '32px' }}>
-          {blog.title}
-        </h1>
-        <p style={{ margin: '0', opacity: 0.9, fontSize: '16px' }}>
-          by {blog.author || 'Unknown'}
-        </p>
-      </div>
+    <div className="blog-view">
+      <h1>{blog.title}</h1>
+      <p>👤 {blog.author?.name || 'Unknown'}</p>
+      <p>🔗 <a href={blog.url}>{blog.url}</a></p>
 
-      {/* Content Card */}
-      <div style={{
-        backgroundColor: '#fff',
-        padding: '30px',
-        borderRadius: '0 0 12px 12px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-        marginBottom: '30px'
-      }}>
-        {/* URL */}
-        <div style={{ marginBottom: '20px' }}>
-          <a 
-            href={blog.url} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            style={{ 
-              color: '#2196F3', 
-              textDecoration: 'none',
-              fontSize: '16px',
-              fontWeight: '500'
-            }}
-          >
-            🔗 {blog.url}
-          </a>
-        </div>
+      <div className="blog-actions">
+        <button
+          onClick={handleLike}
+          className={`like-btn ${hasUserLiked() ? 'active' : ''}`}
+          disabled={!user}
+        >
+          👍 {blog.likes.length}
+        </button>
 
-        {/* Likes */}
-        <div style={{ 
-          marginBottom: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '15px'
-        }}>
-          <span style={{ 
-            fontSize: '18px',
-            fontWeight: 'bold',
-            color: '#333'
-          }}>
-            👍 {blog.likes || 0} likes
-          </span>
-          
-          <button 
-            onClick={handleLike}
-            disabled={!user}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: user ? '#4CAF50' : '#ccc',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: user ? 'pointer' : 'not-allowed',
-              fontSize: '14px',
-              fontWeight: '600',
-              transition: 'background-color 0.3s'
-            }}
-            onMouseEnter={(e) => {
-              if (user) e.target.style.backgroundColor = '#45a049'
-            }}
-            onMouseLeave={(e) => {
-              if (user) e.target.style.backgroundColor = '#4CAF50'
-            }}
-          >
-            {user ? 'Like' : 'Login to like'}
-          </button>
-        </div>
+        <button
+          onClick={handleDislike}
+          className={`dislike-btn ${hasUserDisliked() ? 'active' : ''}`}
+          disabled={!user}
+        >
+          👎 {blog.dislikes.length}
+        </button>
 
-        {/* Delete button */}
         {canDelete && (
-          <button 
-            onClick={handleDelete}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#f44336',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '600',
-              transition: 'background-color 0.3s'
-            }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = '#da190b'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = '#f44336'}
+          <button
+            onClick={handleDeleteBlog}
+            className="delete-blog-btn"
           >
-            🗑️ Remove blog
+            🗑️ Delete blog
           </button>
         )}
       </div>
 
-      {/* Comments Section */}
-      <div style={{
-        backgroundColor: '#fff',
-        padding: '30px',
-        borderRadius: '12px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-      }}>
-        <h2 style={{ 
-          marginTop: '0',
-          marginBottom: '20px',
-          fontSize: '24px',
-          color: '#333'
-        }}>
-          💬 Comments
-        </h2>
-        
-        {/* Add comment form */}
+      <div className="blog-content">
+        <p>{blog.content}</p>
+      </div>
+
+      <div className="comments-section">
+        <h3>Comments</h3>
+
+        {blog.comments.length === 0 ? (
+          <p className="no-comments">No comments yet. Be the first!</p>
+        ) : (
+          <div className="comments-list">
+            {blog.comments.map(comment => (
+              <div key={comment._id} className="comment">
+                <div className="comment-header">
+                  <strong>{comment.user?.name || 'Unknown'}</strong>
+                  <span className="comment-date">
+                    {new Date(comment.createdAt).toLocaleString()}
+                  </span>
+                </div>
+                <p className="comment-text">{comment.text}</p>
+
+                {user &&
+                  (comment.user?._id === user.id ||
+                    comment.user?.id === user.id) && (
+                    <button
+                      onClick={() => handleDeleteComment(comment._id)}
+                      className="delete-comment-btn"
+                    >
+                      🗑️
+                    </button>
+                  )}
+              </div>
+            ))}
+          </div>
+        )}
+
         {user ? (
-          <form onSubmit={handleAddComment} style={{ marginBottom: '30px' }}>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <input
-                type="text"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Add a comment..."
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  fontSize: '16px',
-                  border: '2px solid #ddd',
-                  borderRadius: '8px',
-                  outline: 'none',
-                  transition: 'border-color 0.3s'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#2196F3'}
-                onBlur={(e) => e.target.style.borderColor = '#ddd'}
-              />
-              <button 
-                type="submit"
-                style={{
-                  padding: '12px 24px',
-                  backgroundColor: '#2196F3',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  transition: 'background-color 0.3s'
-                }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = '#1976d2'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = '#2196F3'}
-              >
-                Add
-              </button>
-            </div>
+          <form className="add-comment" onSubmit={handleAddComment}>
+            <input
+              type="text"
+              placeholder="Write a comment..."
+              value={commentInput}
+              onChange={e => setCommentInput(e.target.value)}
+            />
+            <button type="submit">💬 Add Comment</button>
           </form>
         ) : (
-          <p style={{ 
-            padding: '15px',
-            backgroundColor: '#f5f5f5',
-            borderRadius: '8px',
-            color: '#666',
-            marginBottom: '30px'
-          }}>
-            Please login to add comments
-          </p>
-        )}
-
-        {/* Comments list */}
-        {comments.length === 0 ? (
-          <p style={{ 
-            textAlign: 'center',
-            color: '#999',
-            fontSize: '16px',
-            padding: '40px 0'
-          }}>
-            No comments yet. Be the first to comment! 💭
-          </p>
-        ) : (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {comments.map((comment, index) => (
-              <li 
-                key={index}
-                style={{
-                  padding: '15px',
-                  marginBottom: '12px',
-                  backgroundColor: '#f9f9f9',
-                  borderLeft: '4px solid #2196F3',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                  color: '#333',
-                  lineHeight: '1.5'
-                }}
-              >
-                {comment.comment || comment}
-              </li>
-            ))}
-          </ul>
+          <p className="login-prompt">Login to comment</p>
         )}
       </div>
     </div>

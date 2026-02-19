@@ -1,6 +1,6 @@
 import { useSelector, useDispatch } from 'react-redux'
 import { useEffect } from 'react'
-import { initializeBlogs, deleteBlog, likeBlog } from '../store/blogSlice'
+import { initializeBlogs, deleteBlog,  } from '../store/blogSlice'
 import { showNotification } from '../store/notificationSlice'
 
 const Home = () => {
@@ -29,49 +29,59 @@ const Home = () => {
   }
 
   // Функція для лайку блога
-  const handleLike = async (blog) => {
-    try {
-      await dispatch(likeBlog(blog))
-      dispatch(showNotification(`You liked "${blog.title}"`, 'success', 3))
-    } catch (error) {
-      console.error('Failed to like blog:', error)
-      const errorMessage = 
-        error.response?.data?.error ||
-        error.message ||
-        'Network error. Please check your connection.'
-      dispatch(showNotification(errorMessage, 'error', 5))
-    }
-  }
+  // const handleLike = async (blog) => {
+  //   try {
+  //     await dispatch(likeBlog(blog))
+  //     dispatch(showNotification(`You liked "${blog.title}"`, 'success', 3))
+  //   } catch (error) {
+  //     console.error('Failed to like blog:', error)
+  //     const errorMessage = 
+  //       error.response?.data?.error ||
+  //       error.message ||
+  //       'Network error. Please check your connection.'
+  //     dispatch(showNotification(errorMessage, 'error', 5))
+  //   }
+  // }
 
   // Перевірка власника з debugging
-  const isOwner = (blog) => {
-    if (!user) {
-      console.log('❌ No user:', { user })
-      return false
-    }
-    
-    // Перевіряємо різні формати author
-    let authorId = null
-    
-    if (typeof blog.author === 'string') {
-      authorId = blog.author  // Якщо author це просто ID
-    } else if (blog.author && blog.author.id) {
-      authorId = blog.author.id  // Якщо author це об'єкт з id
-    } else if (blog.userId) {
-      authorId = blog.userId  // Якщо є userId (fallback)
-    }
-    
-    const result = authorId === user.id
-    console.log('🔍 Ownership check:', {
-      blogTitle: blog.title,
-      authorId: authorId,
-      blogAuthor: blog.author,
-      userId: blog.userId,
-      currentUserId: user.id,
-      isOwner: result
-    })
-    return result
+const isOwner = (blog) => {
+  // Якщо користувача немає (не залогінений) – точно не власник
+  if (!user) {
+    console.log('❌ No user:', { user })
+    return false
   }
+  
+  // Змінна, куди будемо записувати id автора блогу
+  let authorId = null
+  
+  // Випадок 1: blog.author — це просто рядок з id
+  if (typeof blog.author === 'string') {
+    authorId = blog.author
+  // Випадок 2: blog.author — об'єкт з полем id
+  } else if (blog.author && blog.author.id) {
+    authorId = blog.author.id
+  // Випадок 3: fallback — якщо є окреме поле userId
+  } else if (blog.userId) {
+    authorId = blog.userId
+  }
+  
+  // Порівнюємо id автора з id поточного користувача
+  const result = authorId === user.id
+
+  // Лог у консоль для налагодження: що саме порівнюємо
+  console.log('🔍 Ownership check:', {
+    blogTitle: blog.title,     // заголовок блогу
+    authorId: authorId,        // обраний id автора
+    blogAuthor: blog.author,   // сире поле author з блогу
+    userId: blog.userId,       // поле userId, якщо є
+    currentUserId: user.id,    // id поточного залогіненого юзера
+    isOwner: result            // результат перевірки (true / false)
+  })
+
+  // Повертаємо true, якщо поточний юзер — власник блогу
+  return result
+}
+
 
   // Фільтруємо блоги - показуємо тільки власні
   const myBlogs = blogs.filter(blog => isOwner(blog))
@@ -190,24 +200,9 @@ const Home = () => {
                 marginTop: '15px',
                 flexWrap: 'wrap'
               }}>
-              <button
-                onClick={() => handleLike(blog)}
-                style={{
-                  padding: '5px 12px',
-                  backgroundColor: '#e3f2fd',
-                  border: 'none',
-                  borderRadius: '20px',
-                  fontSize: '14px',
-                  color: '#1976d2',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s'
-                }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#bbdefb'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#e3f2fd'}
-              >
+              <p>
                 👍 {Array.isArray(blog.likes) ? blog.likes.length : blog.likes || 0} likes
-              </button>
+              </p>
 
 
                 <button

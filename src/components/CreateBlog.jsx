@@ -83,47 +83,43 @@ function CreateBlog() {
     setError(null);
     setLoading(true);
 
-    try {
-      // Валідація на фронтенді
-      if (formData.title.length < 3) {
-        setError('Title must be at least 3 characters');
-        setLoading(false);
-        return;
-      }
+try {
+  // Валідація на фронтенді
+  if (formData.title.length < 3) {
+    setError('Title must be at least 3 characters')
+    setLoading(false)
+    return
+  }
 
-      if (!formData.content) {
-        setError('Content is required');
-        setLoading(false);
-        return;
-      }
+  if (!formData.content) {
+    setError('Content is required')
+    setLoading(false)
+    return
+  }
 
-      // Відправляємо звичайний JSON (БЕЗ FormData!)
-      const response = await axios.post(`${API_URL}/blogs`, {
-        title: formData.title,
-        content: formData.content,
-        userId: user.id  // Змінено з userId на author
-      });
+  // Відправляємо звичайний JSON
+  const response = await axios.post(`${API_URL}/blogs`, {
+    title: formData.title,
+    content: formData.content,
+    userId: user.id
+  })
 
-      console.log('Blog created:', response.data);
+  console.log('Blog created:', response.data)
 
-      // Очищаємо форму
-      setFormData({ title: '', content: '' });
-      // setImage(null);
-      // setImagePreview(null);
+  setFormData({ title: '', content: '' })
 
-      // Показуємо повідомлення
-      alert('Blog created successfully! ✅');
+  alert('Blog created successfully! ✅')
 
-      // Редірект на головну
-      navigate('/');
+  // 🔄 Перезавантажити сторінку для оновлення всіх даних/Redux
+  window.location.reload()
 
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create blog');
-      console.error('Error creating blog:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+} catch (err) {
+  setError(err.response?.data?.error || 'Failed to create blog')
+  console.error('Error creating blog:', err)
+} finally {
+  setLoading(false)
+}}
+;
 
   return (
     <div className="create-blog-container">
