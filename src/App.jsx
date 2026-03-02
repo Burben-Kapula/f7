@@ -15,29 +15,33 @@ import UserView from './components/UsersView'
 import { initializeUsers } from './reducers/usersReducer'
 import BlogView from './components/BlogView'
 
+import {
+  Container,
+  AppBar,
+  Toolbar,
+  Button,
+  Typography,
+  Paper
+} from '@mui/material'
+
 function App() {
   const location = useLocation()
   const dispatch = useDispatch()
+
   useEffect(() => {
     dispatch(initializeUsers())
   }, [dispatch])
 
-  // Отримуємо користувача з Redux store замість локального стану
   const user = useSelector(state => state.user)
 
-  // Ініціалізація при завантаженні додатку
   useEffect(() => {
-    // Завантажуємо блоги з сервера
     dispatch(initializeBlogs())
-    
-    // Перевіряємо чи є збережений користувач в localStorage
+
     const storedUser = localStorage.getItem('user')
     if (storedUser && storedUser !== 'null') {
       try {
         const parsedUser = JSON.parse(storedUser)
-        // Зберігаємо користувача в Redux
         dispatch(setUser(parsedUser))
-        // Встановлюємо токен для API запитів
         blogService.setToken(parsedUser.token)
       } catch (error) {
         console.error('Error parsing user data:', error)
@@ -46,94 +50,104 @@ function App() {
     }
   }, [dispatch])
 
-  // Функція logout
   const handleLogout = () => {
-    // Видаляємо з localStorage
     localStorage.removeItem('user')
-    // Очищаємо Redux state
     dispatch(clearUser())
-    // Очищаємо токен з API сервісу
     blogService.setToken(null)
   }
 
+  const isActive = (path) => location.pathname === path
+
   return (
-    <>
-      <div>
-      <nav style={{
-      padding: '15px',
-      backgroundColor: '#f5f5f5',
-      borderRadius: '8px',
-      marginBottom: '20px',
-      display: 'flex',
-      gap: '10px',
-      alignItems: 'center',
-      flexWrap: 'wrap'
-    }}>
-      {/* Bloglist — ЗАВЖДИ видима, це "логотип"/головна */}
-      <Link to="/" style={{
-        textDecoration: 'none',
-        fontWeight: location.pathname === '/' ? 'bold' : 'normal'
-      }}>
-        📝 Bloglist
-      </Link>
-
-      {/* Якщо НЕ залогінений */}
-      {!user && (
-        <>
-          {location.pathname !== '/login' && (
-            <Link to="/login" style={{ textDecoration: 'none' }}>
-              🔐 Login
-            </Link>
-          )}
-          {location.pathname !== '/create' && (
-            <Link to="/create" style={{ textDecoration: 'none' }}>
-              📋 Register
-            </Link>
-          )}
-        </>
-      )}
-
-      {/* Якщо ЗАЛОГІНЕНИЙ */}
-      {user && (
-        <>
-          {location.pathname !== '/createblog' && (
-            <Link to="/createblog" style={{ textDecoration: 'none' }}>
-              ➕ Create Blog
-            </Link>
-          )}
-          {location.pathname !== '/home' && (
-            <Link to="/home" style={{ textDecoration: 'none' }}>
-              👤 Profile
-            </Link>
-          )}
-          {location.pathname !== '/users' && (
-            <Link to="/users" style={{ textDecoration: 'none' }}>
-              👤 Users
-            </Link>
-          )}
-          
-          <button
-            onClick={handleLogout}
-            style={{
-              marginLeft: 'auto',
-              padding: '8px 15px',
-              backgroundColor: '#ff4444',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
+    <Container sx={{ mt: 2, mb: 4 }}>
+      <AppBar position="static" color="default" sx={{ mb: 2, borderRadius: 1 }}>
+        <Toolbar sx={{ gap: 2, flexWrap: 'wrap' }}>
+          <Button
+            component={Link}
+            to="/"
+            color={isActive('/') ? 'primary' : 'inherit'}
+            sx={{ textTransform: 'none', fontWeight: isActive('/') ? 700 : 400 }}
           >
-            🚪 Logout ({user.name})
-          </button>
-        </>
-      )}
-    </nav>
+            📝 Bloglist
+          </Button>
 
+          {!user && (
+            <>
+              {location.pathname !== '/login' && (
+                <Button
+                  component={Link}
+                  to="/login"
+                  color={isActive('/login') ? 'primary' : 'inherit'}
+                  sx={{ textTransform: 'none' }}
+                >
+                  🔐 Login
+                </Button>
+              )}
+              {location.pathname !== '/create' && (
+                <Button
+                  component={Link}
+                  to="/create"
+                  color={isActive('/create') ? 'primary' : 'inherit'}
+                  sx={{ textTransform: 'none' }}
+                >
+                  📋 Register
+                </Button>
+              )}
+            </>
+          )}
 
-        {/* Компонент для показу повідомлень */}
-        <Notifications />
+          {user && (
+            <>
+              {location.pathname !== '/createblog' && (
+                <Button
+                  component={Link}
+                  to="/createblog"
+                  color={isActive('/createblog') ? 'primary' : 'inherit'}
+                  sx={{ textTransform: 'none' }}
+                >
+                  ➕ Create Blog
+                </Button>
+              )}
+              {location.pathname !== '/home' && (
+                <Button
+                  component={Link}
+                  to="/home"
+                  color={isActive('/home') ? 'primary' : 'inherit'}
+                  sx={{ textTransform: 'none' }}
+                >
+                  👤 Profile
+                </Button>
+              )}
+              {location.pathname !== '/users' && (
+                <Button
+                  component={Link}
+                  to="/users"
+                  color={isActive('/users') ? 'primary' : 'inherit'}
+                  sx={{ textTransform: 'none' }}
+                >
+                  👥 Users
+                </Button>
+              )}
 
+              <Typography sx={{ ml: 'auto', mr: 1 }}>
+                {user.name}
+              </Typography>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={handleLogout}
+                sx={{ textTransform: 'none' }}
+              >
+                🚪 Logout
+              </Button>
+            </>
+          )}
+        </Toolbar>
+      </AppBar>
+
+      <Notifications />
+
+      <Paper sx={{ p: 2 }}>
         <Routes>
           <Route path="/" element={<BlogList />} />
           <Route path="/blogs/:id" element={<BlogView />} />
@@ -141,11 +155,11 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/createblog" element={<CreateBlog />} />
           <Route path="/home" element={<Home />} />
-          <Route path='/users' element={<UserView/>}/>
+          <Route path="/users" element={<UserView />} />
           <Route path="*" element={<h1>404 Not Found</h1>} />
         </Routes>
-      </div>
-    </>
+      </Paper>
+    </Container>
   )
 }
 
